@@ -1,0 +1,161 @@
+/* ── Design System ────────────────────────────────────────────────── */
+:root {
+  --bg:        #0d0f14;
+  --bg2:       #13161e;
+  --bg3:       #1a1e2a;
+  --border:    #252a38;
+  --border2:   #2e3547;
+  --amber:     #f5a623;
+  --amber-dim: #7a5211;
+  --cyan:      #3dd6f5;
+  --cyan-dim:  #1a5f6e;
+  --green:     #3dffa0;
+  --red:       #ff4d6a;
+  --text:      #c9d1e0;
+  --text-dim:  #5d6880;
+  --text-head: #e8ecf5;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'Syne', sans-serif;
+  --radius:    6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
+
+/* ── Typography ────────────────────────────────────────────────────── */
+h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
+
+/* ── Markdown Tables ───────────────────────────────────────────────── */
+.md-table-wrap { overflow-x: auto; width: 100%; }
+
+.md-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.md-table-wrap th {
+  background: var(--bg3);
+  color: var(--amber);
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--amber-dim);
+  white-space: nowrap;
+}
+
+.md-table-wrap td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.6;
+}
+
+.md-table-wrap tr:hover td { background: rgba(245,166,35,0.04); }
+
+/* Priority badges */
+.md-table-wrap td:last-child { white-space: nowrap; }
+
+/* ── Code Block ────────────────────────────────────────────────────── */
+.code-block {
+  background: #080a0f;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: #a8d8a8;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* ── Estimation Markdown ───────────────────────────────────────────── */
+.estimation-content h3 {
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 24px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.estimation-content h3:first-child { margin-top: 0; }
+
+.estimation-content ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.estimation-content ul li {
+  padding-left: 16px;
+  position: relative;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.estimation-content ul li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--amber);
+  font-size: 0.7rem;
+  top: 2px;
+}
+
+.estimation-content p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.estimation-content strong { color: var(--amber); }
+
+/* ── Animations ────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scanline {
+  0%   { top: -10%; }
+  100% { top: 110%; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
