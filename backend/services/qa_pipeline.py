@@ -1,8 +1,6 @@
 """
-QA Pipeline Service
--------------------
-Uses OpenAI GPT-4o if OPENAI_API_KEY is set or passed from frontend.
-Falls back to mock data if no key is provided.
+QA Pipeline - Individual Step Functions
+Each step can be called independently.
 """
 
 import os
@@ -11,13 +9,12 @@ import httpx
 
 MODEL = "gpt-4o"
 
-# ── LLM CALL ──────────────────────────────────────────────────────────────────
+# ── LLM ───────────────────────────────────────────────────────────────────────
 
 async def call_llm(prompt: str) -> str:
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         return await mock_llm(prompt)
-
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -28,236 +25,203 @@ async def call_llm(prompt: str) -> str:
         "max_tokens": 4096,
         "temperature": 0.3,
     }
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         resp = await client.post(
             "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=body,
+            headers=headers, json=body,
         )
         resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        return resp.json()["choices"][0]["message"]["content"]
 
 
 async def mock_llm(prompt: str) -> str:
     await asyncio.sleep(0.4)
     p = prompt.lower()
-    if "qa analyst" in p:
-        return MOCK_ANALYST
-    elif "qa lead" in p:
-        return MOCK_LEAD
-    elif "qa estimator" in p or "estimation" in p:
-        return MOCK_ESTIMATION
-    elif "playwright" in p:
-        return MOCK_PLAYWRIGHT
-    elif "qa automation" in p or "selenium" in p:
-        return MOCK_AUTOMATION
-    elif "selector" in p or "html" in p:
-        return MOCK_SELECTORS
+    if "qa analyst" in p:   return MOCK_ANALYST
+    if "qa lead" in p:      return MOCK_LEAD
+    if "estimator" in p:    return MOCK_ESTIMATION
+    if "selector" in p:     return MOCK_SELECTORS
+    if "playwright" in p:   return MOCK_PLAYWRIGHT
+    if "selenium" in p:     return MOCK_AUTOMATION
     return "Mock response."
 
 
-# ── PIPELINE STEPS ────────────────────────────────────────────────────────────
+# ── STEP 1: QA ANALYST ────────────────────────────────────────────────────────
 
-async def qa_analyst(requirement: str) -> str:
-    prompt = f"""You are a QA Analyst. Analyze the following requirement and generate detailed test cases.
+async def qa_analyst(requirement: str, url: str = "") -> str:
+    url_ctx = f"\nTarget URL: {url}" if url else ""
+    prompt = f"""You are a QA Analyst. Generate detailed test cases for the requirement below.
 
 Requirement:
-{requirement}
+{requirement}{url_ctx}
 
-Output ONLY a markdown table with these columns:
+Output ONLY a markdown table:
 | ID | Title | Preconditions | Steps | Expected Result | Priority |
 
-Include positive cases, negative cases, and edge cases.
-Be clear, concise, and professional. Return only the markdown table, no other text."""
+Include positive, negative, and edge cases. Return only the table."""
     return await call_llm(prompt)
 
+
+# ── STEP 2: QA LEAD ───────────────────────────────────────────────────────────
 
 async def qa_lead(requirement: str, analyst_output: str) -> str:
-    prompt = f"""You are a QA Lead reviewing test cases written by a QA Analyst.
+    prompt = f"""You are a QA Lead reviewing test cases.
 
-Original Requirement:
-{requirement}
+Requirement: {requirement}
 
-Analyst's Test Cases:
+Analyst Test Cases:
 {analyst_output}
 
-Your tasks:
-- Remove duplicates
-- Fix unclear steps
-- Add missing edge cases
-- Improve coverage
+Tasks: remove duplicates, fix unclear steps, add missing edge cases, improve coverage.
 
-Return ONLY the final improved markdown table with the same columns:
-| ID | Title | Preconditions | Steps | Expected Result | Priority |
-
-No explanation, no preamble — just the improved table."""
+Return ONLY the improved markdown table:
+| ID | Title | Preconditions | Steps | Expected Result | Priority |"""
     return await call_llm(prompt)
 
 
+# ── STEP 3: QA ESTIMATOR ──────────────────────────────────────────────────────
+
 async def qa_estimator(requirement: str, lead_output: str) -> str:
-    prompt = f"""You are a QA Test Manager and Estimator.
+    prompt = f"""You are a QA Estimator.
 
-Requirement:
-{requirement}
+Requirement: {requirement}
 
-Final Test Cases:
+Test Cases:
 {lead_output}
 
-Produce a testing effort estimation in this exact markdown format:
+Output estimation in this exact format:
 
 ### Estimation Summary
 - **Total Time (hours):**
-- **Complexity:** (Low / Medium / High)
+- **Complexity:** Low / Medium / High
 
 ### Breakdown
 | Activity | Hours |
 |----------|-------|
 | Test Design | X |
 | Manual Testing | X |
-| Automation Scripting (Selenium) | X |
-| Automation Scripting (Playwright) | X |
-| Debugging & Stabilization | X |
+| Automation (Selenium) | X |
+| Automation (Playwright) | X |
+| Debugging | X |
 | Reporting | X |
 | **Total** | **X** |
 
 ### Risks
 - Risk 1
-- Risk 2
 
 ### Assumptions
 - Assumption 1
-- Assumption 2
 
-Return only the markdown content, no other text."""
+Return only markdown."""
     return await call_llm(prompt)
 
 
-async def qa_automation(requirement: str, lead_output: str) -> str:
-    prompt = f"""You are a QA Automation Engineer specializing in Selenium WebDriver.
+# ── STEP 4: QA SELECTOR ───────────────────────────────────────────────────────
 
-Requirement:
-{requirement}
-
-Test Cases to Automate:
-{lead_output}
-
-Generate complete Python Pytest + Selenium automation code using Page Object Model (POM).
-
-Requirements:
-- Create a Page Object class with all locators
-- Create a test file with test functions
-- Use explicit waits (WebDriverWait)
-- Use fixtures for driver setup/teardown
-- Use parametrize where applicable
-- Follow best practices
-- Code must be runnable
-
-Return ONLY raw Python code. No markdown fences, no explanation."""
-    return await call_llm(prompt)
-
-
-async def qa_playwright(requirement: str, lead_output: str) -> str:
-    prompt = f"""You are a QA Automation Engineer specializing in Microsoft Playwright with Python.
-
-Requirement:
-{requirement}
-
-Test Cases to Automate:
-{lead_output}
-
-Generate complete Playwright + Pytest automation code using Page Object Model (POM).
-
-Requirements:
-- Use Python + Playwright (playwright.sync_api)
-- Create a Page Object class with all locators and methods
-- Create a test file with test functions
-- Use Playwright fixtures (page, browser, context)
-- Use expect() assertions from playwright
-- Handle waits properly with Playwright's auto-waiting
-- Use parametrize where applicable
-- Follow Playwright best practices
-- Code must be runnable with: pip install pytest-playwright
-
-Structure:
-1. pages/page_object.py - Page Object class
-2. tests/test_suite.py - Test file
-
-Return ONLY raw Python code. No markdown fences, no explanation."""
-    return await call_llm(prompt)
-
-
-async def analyze_selectors(html_content: str, page_name: str, openai_key: str = "") -> str:
-    if openai_key:
-        os.environ["OPENAI_API_KEY"] = openai_key
-
+async def qa_selector(html_content: str, url: str = "", page_name: str = "Page") -> str:
     max_len = 12000
-    html_truncated = html_content[:max_len] + "\n... [truncated]" if len(html_content) > max_len else html_content
+    html = html_content[:max_len] + "\n...[truncated]" if len(html_content) > max_len else html_content
+    url_ctx = f"Page URL: {url}\n" if url else ""
+    class_name = page_name.replace(' ', '').replace('-', '').replace('/', '')
 
-    prompt = f"""You are a QA Automation Engineer specializing in Selenium WebDriver.
+    prompt = f"""You are a QA Automation Engineer. Extract ALL selectors from this HTML.
 
-Analyze the following HTML source code from the "{page_name}" page and extract ALL useful selectors for test automation.
-
+{url_ctx}
 HTML:
-{html_truncated}
+{html}
 
-Prefer selectors in this order: ID > data-testid > name > CSS class > XPath.
+Prefer: ID > data-testid > name > CSS > XPath.
 
-Format your response as a Python Page Object class like this:
+Output as Python class usable in Selenium AND Playwright:
 
 # ============================================================
-# PAGE OBJECT: {page_name}
+# PAGE SELECTORS: {page_name}
+# URL: {url or 'N/A'}
 # ============================================================
 
 from selenium.webdriver.common.by import By
 
-class {page_name.replace(' ', '')}Page:
+class {class_name}Selectors:
 
     # --- Form Inputs ---
-    EMAIL_INPUT    = (By.ID, "email")           # Email input field
-    PASSWORD_INPUT = (By.ID, "password")        # Password input field
+    EMAIL_INPUT    = (By.ID, "email")       # Selenium
+    PASSWORD_INPUT = (By.ID, "password")    # Selenium
+
+    # --- Playwright equivalents ---
+    # email_input    = "#email"
+    # password_input = "#password"
 
     # --- Buttons ---
-    LOGIN_BUTTON   = (By.ID, "login-btn")       # Submit / Login button
+    LOGIN_BUTTON   = (By.ID, "login-btn")
 
     # --- Messages ---
-    ERROR_MSG      = (By.CSS_SELECTOR, "[data-testid='error']")  # Error message
+    ERROR_MSG      = (By.CSS_SELECTOR, "[data-testid='error']")
 
 # ============================================================
-# SELECTOR REFERENCE TABLE
+# REFERENCE TABLE
 # ============================================================
-# Element              | Type              | Locator
-# ---------------------|-------------------|---------------------------
-# Email Input          | By.ID             | "email"
+# Element        | Selenium               | Playwright
+# ---------------|------------------------|------------------
+# Email Input    | (By.ID, "email")       | "#email"
 
-List ALL selectors including inputs, buttons, links, messages, modals, tables.
-Return ONLY the Python code. No explanation outside code comments."""
-
+List ALL elements found. Return only Python code."""
     return await call_llm(prompt)
 
 
-# ── MAIN PIPELINE ─────────────────────────────────────────────────────────────
+# ── STEP 5: QA ENGINEER (SELENIUM) ───────────────────────────────────────────
 
-async def run_pipeline(requirement: str, openai_key: str = "") -> dict:
-    if openai_key:
-        os.environ["OPENAI_API_KEY"] = openai_key
+async def qa_automation(requirement: str, lead_output: str, selector_output: str, url: str = "") -> str:
+    base_url = url or "https://example.com"
+    prompt = f"""You are a QA Automation Engineer (Selenium).
 
-    analyst_out = await qa_analyst(requirement)
-    lead_out = await qa_lead(requirement, analyst_out)
+Requirement: {requirement}
+Base URL: {base_url}
 
-    estimation_out, automation_out, playwright_out = await asyncio.gather(
-        qa_estimator(requirement, lead_out),
-        qa_automation(requirement, lead_out),
-        qa_playwright(requirement, lead_out),
-    )
+Test Cases:
+{lead_output}
 
-    return {
-        "analyst": analyst_out,
-        "lead": lead_out,
-        "estimation": estimation_out,
-        "automation": automation_out,
-        "playwright": playwright_out,
-    }
+Selectors (from HTML analysis — use these exactly):
+{selector_output}
+
+Generate complete Python + Pytest + Selenium POM code.
+- Use the selectors above — do NOT invent new ones
+- Use {base_url} as the base URL
+- Page Object class with provided selectors
+- Test functions covering all test cases
+- WebDriverWait for waits
+- Pytest fixtures for setup/teardown
+
+Return ONLY raw Python code. No markdown fences."""
+    return await call_llm(prompt)
+
+
+# ── STEP 6: QA PLAYWRIGHT ────────────────────────────────────────────────────
+
+async def qa_playwright(requirement: str, lead_output: str, selector_output: str, url: str = "") -> str:
+    base_url = url or "https://example.com"
+    prompt = f"""You are a QA Playwright Engineer (Python + Playwright).
+
+Requirement: {requirement}
+Base URL: {base_url}
+
+Test Cases:
+{lead_output}
+
+Selectors (from HTML analysis — use these exactly):
+{selector_output}
+
+Generate complete Python + Pytest + Playwright POM code.
+- Use the selectors above — do NOT invent new ones
+- Use {base_url} as the base URL
+- Use playwright.sync_api
+- Page Object class with provided selectors
+- Test functions covering all test cases
+- Use expect() for assertions
+- Pytest fixtures (page, browser, context)
+- Install: pip install pytest-playwright && playwright install
+
+Return ONLY raw Python code. No markdown fences."""
+    return await call_llm(prompt)
 
 
 # ── MOCK DATA ─────────────────────────────────────────────────────────────────
@@ -266,23 +230,23 @@ MOCK_ANALYST = """| ID | Title | Preconditions | Steps | Expected Result | Prior
 |----|-------|---------------|-------|-----------------|----------|
 | TC-001 | Successful login with valid credentials | Registered account exists | 1. Go to login page 2. Enter valid email 3. Enter correct password 4. Click Login | User redirected to dashboard | High |
 | TC-002 | Login fails with incorrect password | Registered account exists | 1. Enter valid email 2. Enter wrong password 3. Click Login | Error message shown | High |
-| TC-003 | Account locks after 5 failed attempts | Registered account exists | 1. Enter wrong password 5 times | Account locked message shown | High |
+| TC-003 | Account locks after 5 failed attempts | Registered account | 1. Enter wrong password 5 times | Account locked message shown | High |
 | TC-004 | Remember Me persists session | Valid credentials | 1. Login with Remember Me 2. Close browser 3. Reopen | User still logged in | High |
 | TC-005 | Login with empty email | App accessible | 1. Leave email blank 2. Click Login | Validation error shown | High |
 | TC-006 | Login with empty password | App accessible | 1. Leave password blank 2. Click Login | Validation error shown | High |"""
 
 MOCK_LEAD = """| ID | Title | Preconditions | Steps | Expected Result | Priority |
 |----|-------|---------------|-------|-----------------|----------|
-| TC-001 | Successful login with valid credentials | Registered account exists; app accessible | 1. Go to login page 2. Enter valid email 3. Enter correct password 4. Click Login | User redirected to dashboard; session created | High |
-| TC-002 | Login fails with incorrect password | Registered account exists | 1. Enter valid email 2. Enter wrong password 3. Click Login | Generic error shown; no password hint | High |
-| TC-003 | No lockout before 5th failed attempt | Registered account; 0 prior failures | 1. Enter wrong password 4 times | Account still accessible | High |
-| TC-004 | Account locks on 5th failed attempt | Registered account; 0 prior failures | 1. Enter wrong password 5 times | Account locked; lock message shown | High |
-| TC-005 | Locked account blocks correct password | Account is locked | 1. Enter correct credentials 2. Click Login | Login denied; lock message shown | High |
+| TC-001 | Successful login | Account exists; app accessible | 1. Go to login 2. Enter valid email 3. Enter correct password 4. Click Login | Dashboard shown; session created | High |
+| TC-002 | Wrong password shows error | Account exists | 1. Enter valid email 2. Enter wrong password 3. Click Login | Generic error; no password hint | High |
+| TC-003 | No lockout before 5th attempt | 0 prior failures | 1. Enter wrong password 4 times | Account still accessible | High |
+| TC-004 | Account locks on 5th attempt | 0 prior failures | 1. Enter wrong password 5 times | Account locked; lock message shown | High |
+| TC-005 | Locked account blocks correct password | Account locked | 1. Enter correct credentials 2. Click Login | Login denied; lock message shown | High |
 | TC-006 | Remember Me sets persistent cookie | Valid credentials | 1. Login with Remember Me 2. Close browser 3. Reopen | Persistent cookie; user logged in | High |
-| TC-007 | Without Remember Me session expires | Valid credentials | 1. Login without Remember Me 2. Close and reopen browser | User redirected to login | Medium |
-| TC-008 | Empty email shows validation error | App accessible | 1. Leave email blank 2. Click Login | Inline error: Email is required | High |
-| TC-009 | Empty password shows validation error | App accessible | 1. Leave password blank 2. Click Login | Inline error: Password is required | High |
-| TC-010 | SQL injection in email field | App accessible | 1. Enter SQL payload 2. Click Login | Login fails; no SQL error exposed | High |"""
+| TC-007 | Session expires without Remember Me | Valid credentials | 1. Login without Remember Me 2. Close and reopen | User redirected to login | Medium |
+| TC-008 | Empty email shows validation error | App accessible | 1. Leave email blank 2. Click Login | Email is required error | High |
+| TC-009 | Empty password shows validation error | App accessible | 1. Leave password blank 2. Click Login | Password is required error | High |
+| TC-010 | SQL injection blocked | App accessible | 1. Enter SQL payload in email 2. Click Login | Login fails safely | High |"""
 
 MOCK_ESTIMATION = """### Estimation Summary
 - **Total Time (hours):** 36.0
@@ -293,50 +257,86 @@ MOCK_ESTIMATION = """### Estimation Summary
 |----------|-------|
 | Test Design | 3.0 |
 | Manual Testing | 7.5 |
-| Automation Scripting (Selenium) | 10.0 |
-| Automation Scripting (Playwright) | 8.0 |
+| Automation (Selenium) | 10.0 |
+| Automation (Playwright) | 8.0 |
 | Debugging | 5.0 |
 | Reporting | 2.5 |
 | **Total** | **36.0** |
 
 ### Risks
 - Account lockout requires reset between test runs
-- Session persistence tests may vary across browsers
-- Security tests may be blocked by WAF in staging
+- Session tests vary across browsers
 
 ### Assumptions
-- Test account can be freely created and reset
-- Chrome latest is the primary test browser
-- Both Selenium and Playwright suites run independently"""
+- Test account can be freely reset
+- Chrome latest is primary browser"""
 
-MOCK_AUTOMATION = '''import pytest
+MOCK_SELECTORS = """# ============================================================
+# PAGE SELECTORS: Login Page (MOCK — add OpenAI key for real analysis)
+# ============================================================
+
+from selenium.webdriver.common.by import By
+
+class LoginPageSelectors:
+
+    # --- Form Inputs ---
+    EMAIL_INPUT     = (By.ID, "email")
+    PASSWORD_INPUT  = (By.ID, "password")
+    REMEMBER_ME     = (By.ID, "remember-me")
+
+    # --- Buttons ---
+    LOGIN_BUTTON    = (By.ID, "login-btn")
+    FORGOT_PASSWORD = (By.CSS_SELECTOR, "a.forgot")
+
+    # --- Messages ---
+    ERROR_MSG       = (By.CSS_SELECTOR, "[data-testid='error-message']")
+    LOCK_MSG        = (By.CSS_SELECTOR, "[data-testid='lock-message']")
+
+    # --- Playwright locators ---
+    # email_input     = "#email"
+    # password_input  = "#password"
+    # login_button    = "#login-btn"
+    # error_msg       = "[data-testid='error-message']"
+
+# ============================================================
+# REFERENCE TABLE
+# ============================================================
+# Element         | Selenium                                    | Playwright
+# ----------------|---------------------------------------------|---------------------------
+# Email Input     | (By.ID, "email")                           | "#email"
+# Password Input  | (By.ID, "password")                        | "#password"
+# Login Button    | (By.ID, "login-btn")                       | "#login-btn"
+# Error Message   | (By.CSS_SELECTOR, "[data-testid='error']") | "[data-testid='error']"
+"""
+
+MOCK_AUTOMATION = """import pytest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
+BASE_URL    = "https://example.com"
 VALID_EMAIL = "user@example.com"
 VALID_PASS  = "ValidPass123!"
 WRONG_PASS  = "WrongPass999!"
 
 class LoginPage:
-    URL            = "https://example.com/login"
     EMAIL_INPUT    = (By.ID, "email")
     PASSWORD_INPUT = (By.ID, "password")
     LOGIN_BUTTON   = (By.ID, "login-btn")
-    ERROR_MSG      = (By.CSS_SELECTOR, "[data-testid=\'error-message\']")
-    LOCK_MSG       = (By.CSS_SELECTOR, "[data-testid=\'lock-message\']")
-    DASHBOARD      = (By.CSS_SELECTOR, "[data-testid=\'dashboard-header\']")
+    ERROR_MSG      = (By.CSS_SELECTOR, "[data-testid='error-message']")
+    LOCK_MSG       = (By.CSS_SELECTOR, "[data-testid='lock-message']")
+    DASHBOARD      = (By.CSS_SELECTOR, "[data-testid='dashboard-header']")
 
     def __init__(self, driver):
         self.driver = driver
         self.wait   = WebDriverWait(driver, 10)
 
     def open(self):
-        self.driver.get(self.URL)
+        self.driver.get(f"{BASE_URL}/login")
 
     def login(self, email, password):
         self.open()
@@ -364,8 +364,7 @@ def driver():
     d.quit()
 
 @pytest.fixture
-def page(driver):
-    return LoginPage(driver)
+def page(driver): return LoginPage(driver)
 
 def test_valid_login(page):
     page.login(VALID_EMAIL, VALID_PASS)
@@ -375,197 +374,54 @@ def test_wrong_password(page):
     page.login(VALID_EMAIL, WRONG_PASS)
     assert "Invalid" in page.get_error()
 
-def test_account_lockout(page):
-    for _ in range(5):
-        page.login(VALID_EMAIL, WRONG_PASS)
+def test_lockout(page):
+    for _ in range(5): page.login(VALID_EMAIL, WRONG_PASS)
     lock = page.wait.until(EC.visibility_of_element_located(LoginPage.LOCK_MSG)).text
-    assert "locked" in lock.lower()'''
+    assert "locked" in lock.lower()"""
 
-MOCK_PLAYWRIGHT = '''# Install: pip install pytest-playwright
-# Setup:   playwright install chromium
+MOCK_PLAYWRIGHT = """# pip install pytest-playwright && playwright install chromium
 
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL   = "https://example.com"
+BASE_URL    = "https://example.com"
 VALID_EMAIL = "user@example.com"
 VALID_PASS  = "ValidPass123!"
 WRONG_PASS  = "WrongPass999!"
 
-
-# ── Page Object ───────────────────────────────────────────────────────────────
-
 class LoginPage:
     def __init__(self, page: Page):
-        self.page = page
-
-        # Locators
+        self.page           = page
         self.email_input    = page.locator("#email")
         self.password_input = page.locator("#password")
         self.login_button   = page.locator("#login-btn")
         self.remember_me    = page.locator("#remember-me")
-        self.error_msg      = page.locator("[data-testid=\'error-message\']")
-        self.lock_msg       = page.locator("[data-testid=\'lock-message\']")
-        self.dashboard      = page.locator("[data-testid=\'dashboard-header\']")
+        self.error_msg      = page.locator("[data-testid='error-message']")
+        self.lock_msg       = page.locator("[data-testid='lock-message']")
+        self.dashboard      = page.locator("[data-testid='dashboard-header']")
 
     def navigate(self):
         self.page.goto(f"{BASE_URL}/login")
 
-    def login(self, email: str, password: str, remember: bool = False):
+    def login(self, email, password, remember=False):
         self.navigate()
         self.email_input.fill(email)
         self.password_input.fill(password)
-        if remember:
-            self.remember_me.check()
+        if remember: self.remember_me.check()
         self.login_button.click()
 
-    def get_error_text(self) -> str:
-        return self.error_msg.inner_text()
-
-    def is_dashboard_visible(self) -> bool:
-        return self.dashboard.is_visible()
-
-
-# ── Fixtures ──────────────────────────────────────────────────────────────────
-
 @pytest.fixture
-def login_page(page: Page) -> LoginPage:
-    return LoginPage(page)
+def login_page(page: Page): return LoginPage(page)
 
+def test_valid_login(login_page):
+    login_page.login(VALID_EMAIL, VALID_PASS)
+    expect(login_page.dashboard).to_be_visible()
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+def test_wrong_password(login_page):
+    login_page.login(VALID_EMAIL, WRONG_PASS)
+    expect(login_page.error_msg).to_contain_text("Invalid")
 
-class TestSuccessfulLogin:
-    def test_valid_credentials_redirects_to_dashboard(self, login_page: LoginPage):
-        login_page.login(VALID_EMAIL, VALID_PASS)
-        expect(login_page.dashboard).to_be_visible()
-
-    def test_page_title_after_login(self, login_page: LoginPage, page: Page):
-        login_page.login(VALID_EMAIL, VALID_PASS)
-        expect(page).to_have_title("Dashboard")
-
-
-class TestLoginFailures:
-    def test_wrong_password_shows_error(self, login_page: LoginPage):
-        login_page.login(VALID_EMAIL, WRONG_PASS)
-        expect(login_page.error_msg).to_be_visible()
-        expect(login_page.error_msg).to_contain_text("Invalid")
-
-    def test_unregistered_email_shows_same_error(self, login_page: LoginPage):
-        login_page.login("ghost@example.com", WRONG_PASS)
-        expect(login_page.error_msg).to_be_visible()
-        expect(login_page.error_msg).to_contain_text("Invalid")
-
-    def test_errors_identical_no_user_enumeration(self, login_page: LoginPage, page: Page):
-        login_page.login(VALID_EMAIL, WRONG_PASS)
-        err1 = login_page.get_error_text()
-
-        login_page.login("ghost@example.com", WRONG_PASS)
-        err2 = login_page.get_error_text()
-
-        assert err1 == err2, "Error messages must be identical to prevent user enumeration"
-
-
-class TestAccountLockout:
-    def test_no_lock_before_fifth_attempt(self, login_page: LoginPage):
-        for _ in range(4):
-            login_page.login(VALID_EMAIL, WRONG_PASS)
-        expect(login_page.lock_msg).not_to_be_visible()
-
-    def test_locks_on_fifth_attempt(self, login_page: LoginPage):
-        for _ in range(5):
-            login_page.login(VALID_EMAIL, WRONG_PASS)
-        expect(login_page.lock_msg).to_be_visible()
-        expect(login_page.lock_msg).to_contain_text("locked")
-
-    def test_locked_account_rejects_correct_password(self, login_page: LoginPage):
-        for _ in range(5):
-            login_page.login(VALID_EMAIL, WRONG_PASS)
-        login_page.login(VALID_EMAIL, VALID_PASS)
-        expect(login_page.dashboard).not_to_be_visible()
-        expect(login_page.lock_msg).to_be_visible()
-
-
-class TestValidation:
-    def test_empty_email_shows_error(self, login_page: LoginPage, page: Page):
-        login_page.navigate()
-        login_page.password_input.fill(VALID_PASS)
-        login_page.login_button.click()
-        expect(page.locator("[data-testid=\'email-error\']")).to_be_visible()
-
-    def test_empty_password_shows_error(self, login_page: LoginPage, page: Page):
-        login_page.navigate()
-        login_page.email_input.fill(VALID_EMAIL)
-        login_page.login_button.click()
-        expect(page.locator("[data-testid=\'password-error\']")).to_be_visible()
-
-    @pytest.mark.parametrize("bad_email", ["user@", "plaintext", "@nodomain"])
-    def test_invalid_email_format(self, login_page: LoginPage, page: Page, bad_email: str):
-        login_page.navigate()
-        login_page.email_input.fill(bad_email)
-        login_page.password_input.fill(VALID_PASS)
-        login_page.login_button.click()
-        expect(page.locator("[data-testid=\'email-error\']")).to_be_visible()
-
-
-class TestRememberMe:
-    def test_remember_me_sets_persistent_cookie(self, login_page: LoginPage, page: Page, context):
-        login_page.login(VALID_EMAIL, VALID_PASS, remember=True)
-        expect(login_page.dashboard).to_be_visible()
-        cookies = context.cookies()
-        persistent = [c for c in cookies if c.get("name") in ("auth_token", "remember_token")]
-        assert len(persistent) > 0, "Persistent auth cookie should be set"
-
-
-class TestSecurity:
-    def test_sql_injection_blocked(self, login_page: LoginPage):
-        login_page.login("\'OR\'1\'=\'1", VALID_PASS)
-        expect(login_page.dashboard).not_to_be_visible()
-
-    def test_xss_payload_sanitized(self, login_page: LoginPage, page: Page):
-        login_page.login("<script>alert(1)</script>", VALID_PASS)
-        expect(login_page.dashboard).not_to_be_visible()
-        assert "<script>" not in page.content()'''
-
-MOCK_SELECTORS = '''# ============================================================
-# PAGE OBJECT: Login Page (MOCK - Add OpenAI key for real analysis)
-# ============================================================
-
-from selenium.webdriver.common.by import By
-
-class LoginPage:
-
-    # --- Form Inputs ---
-    EMAIL_INPUT     = (By.ID, "email")
-    PASSWORD_INPUT  = (By.ID, "password")
-    REMEMBER_ME     = (By.ID, "remember-me")
-
-    # --- Buttons ---
-    LOGIN_BUTTON    = (By.ID, "login-btn")
-    FORGOT_PASSWORD = (By.CSS_SELECTOR, "a.forgot")
-
-    # --- Messages ---
-    ERROR_MSG       = (By.CSS_SELECTOR, "[data-testid=\'error-message\']")
-    SUCCESS_MSG     = (By.CSS_SELECTOR, "[data-testid=\'success-message\']")
-    LOCK_MSG        = (By.CSS_SELECTOR, "[data-testid=\'lock-message\']")
-
-    # --- Navigation ---
-    REGISTER_LINK   = (By.CSS_SELECTOR, "a[href=\'/register\']")
-    LOGO            = (By.CSS_SELECTOR, ".logo")
-
-    # --- Post Login ---
-    DASHBOARD       = (By.CSS_SELECTOR, "[data-testid=\'dashboard-header\']")
-
-# ============================================================
-# SELECTOR REFERENCE TABLE
-# ============================================================
-# Element              | Type              | Locator
-# ---------------------|-------------------|---------------------------
-# Email Input          | By.ID             | "email"
-# Password Input       | By.ID             | "password"
-# Remember Me          | By.ID             | "remember-me"
-# Login Button         | By.ID             | "login-btn"
-# Error Message        | By.CSS_SELECTOR   | "[data-testid=\'error-message\']"
-# Lock Message         | By.CSS_SELECTOR   | "[data-testid=\'lock-message\']"
-# Dashboard Header     | By.CSS_SELECTOR   | "[data-testid=\'dashboard-header\']"
-'''
+def test_lockout(login_page):
+    for _ in range(5): login_page.login(VALID_EMAIL, WRONG_PASS)
+    expect(login_page.lock_msg).to_be_visible()
+    expect(login_page.lock_msg).to_contain_text("locked")"""

@@ -29,6 +29,7 @@ body {
   font-family: var(--mono);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────── */
@@ -40,13 +41,65 @@ body {
 /* ── Typography ────────────────────────────────────────────────────── */
 h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
 
+/* ── Responsive Layout ─────────────────────────────────────────────── */
+
+/* Container responsive */
+.app-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .app-container {
+    grid-template-columns: 1fr;
+  }
+
+  .left-col-sticky {
+    position: static !important;
+  }
+}
+
+/* ── Tabs overflow fix ─────────────────────────────────────────────── */
+.tabs-wrap {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  gap: 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.tabs-wrap::-webkit-scrollbar {
+  height: 3px;
+}
+
+.tabs-wrap::-webkit-scrollbar-thumb {
+  background: var(--amber-dim);
+  border-radius: 2px;
+}
+
+/* Tab min-width to prevent squishing */
+.tab-btn {
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
 /* ── Markdown Tables ───────────────────────────────────────────────── */
-.md-table-wrap { overflow-x: auto; width: 100%; }
+.md-table-wrap {
+  overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
 
 .md-table-wrap table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   line-height: 1.55;
 }
 
@@ -54,7 +107,7 @@ h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
   background: var(--bg3);
   color: var(--amber);
   font-family: var(--sans);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -69,12 +122,11 @@ h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
   border-bottom: 1px solid var(--border);
   vertical-align: top;
   line-height: 1.6;
+  max-width: 300px;
+  word-break: break-word;
 }
 
 .md-table-wrap tr:hover td { background: rgba(245,166,35,0.04); }
-
-/* Priority badges */
-.md-table-wrap td:last-child { white-space: nowrap; }
 
 /* ── Code Block ────────────────────────────────────────────────────── */
 .code-block {
@@ -83,21 +135,22 @@ h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
   border-radius: var(--radius);
   padding: 20px;
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.7;
   color: #a8d8a8;
   overflow-x: auto;
   white-space: pre;
   tab-size: 4;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Estimation Markdown ───────────────────────────────────────────── */
 .estimation-content h3 {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--amber);
-  margin: 24px 0 12px;
+  margin: 20px 0 10px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
@@ -108,13 +161,13 @@ h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .estimation-content ul li {
   padding-left: 16px;
   position: relative;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   line-height: 1.6;
 }
 
@@ -128,12 +181,42 @@ h1, h2, h3, h4 { font-family: var(--sans); color: var(--text-head); }
 }
 
 .estimation-content p {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   line-height: 1.6;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .estimation-content strong { color: var(--amber); }
+
+/* ── Header responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .header-inner {
+    padding: 0 16px !important;
+  }
+
+  .logo-title {
+    font-size: 0.8rem !important;
+  }
+
+  .key-badge {
+    display: none !important;
+  }
+
+  .status-text {
+    display: none;
+  }
+}
+
+/* ── Main content responsive ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .main-pad {
+    padding: 16px !important;
+  }
+
+  .card-pad {
+    padding: 16px !important;
+  }
+}
 
 /* ── Animations ────────────────────────────────────────────────────── */
 @keyframes fadeUp {
