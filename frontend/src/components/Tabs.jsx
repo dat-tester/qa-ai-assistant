@@ -1,8 +1,9 @@
 const TABS = [
   { id: 'analyst',    label: 'Test Cases',       icon: '◈', sub: 'QA Analyst' },
   { id: 'lead',       label: 'Final Test Cases',  icon: '◉', sub: 'QA Lead' },
-  { id: 'estimation', label: 'Estimation',         icon: '◆', sub: 'QA Estimator' },
-  { id: 'automation', label: 'Automation Code',    icon: '◀', sub: 'QA Engineer' },
+  { id: 'estimation', label: 'Estimation',        icon: '◆', sub: 'QA Estimator' },
+  { id: 'automation', label: 'Automation Code',   icon: '◀', sub: 'QA Engineer' },
+  { id: 'selector',   label: 'Selector Analyzer', icon: '⚡', sub: 'QA Selector' },
 ]
 
 export default function Tabs({ active, onChange, hasData }) {
@@ -10,20 +11,24 @@ export default function Tabs({ active, onChange, hasData }) {
     <div style={styles.wrap}>
       {TABS.map((tab, i) => {
         const isActive = active === tab.id
+        const isSelector = tab.id === 'selector'
+        const disabled = !hasData && !isSelector
+
         return (
           <button
             key={tab.id}
             style={{
               ...styles.tab,
               ...(isActive ? styles.tabActive : {}),
-              ...(!hasData ? styles.tabDisabled : {}),
+              ...(isActive && isSelector ? styles.tabActiveSelector : {}),
+              ...(disabled ? styles.tabDisabled : {}),
             }}
-            onClick={() => hasData && onChange(tab.id)}
-            disabled={!hasData}
+            onClick={() => !disabled && onChange(tab.id)}
+            disabled={disabled}
           >
             <span style={{
               ...styles.tabIcon,
-              ...(isActive ? styles.tabIconActive : {}),
+              ...(isActive ? (isSelector ? styles.tabIconSelector : styles.tabIconActive) : {}),
             }}>
               {tab.icon}
             </span>
@@ -31,10 +36,16 @@ export default function Tabs({ active, onChange, hasData }) {
               <span style={styles.tabLabel}>{tab.label}</span>
               <span style={styles.tabSub}>{tab.sub}</span>
             </span>
-            {isActive && <span style={styles.activeBar} />}
+            {isActive && (
+              <span style={{
+                ...styles.activeBar,
+                background: isSelector ? 'var(--cyan)' : 'var(--amber)',
+              }} />
+            )}
             <span style={{
               ...styles.tabNum,
               ...(isActive ? styles.tabNumActive : {}),
+              ...(isActive && isSelector ? styles.tabNumSelector : {}),
             }}>
               0{i + 1}
             </span>
@@ -74,6 +85,10 @@ const styles = {
     borderBottomColor: 'var(--amber)',
     background: 'rgba(245,166,35,0.04)',
   },
+  tabActiveSelector: {
+    borderBottomColor: 'var(--cyan)',
+    background: 'rgba(61,214,245,0.04)',
+  },
   tabDisabled: {
     opacity: 0.35,
     cursor: 'not-allowed',
@@ -85,6 +100,9 @@ const styles = {
   },
   tabIconActive: {
     color: 'var(--amber)',
+  },
+  tabIconSelector: {
+    color: 'var(--cyan)',
   },
   tabInner: {
     display: 'flex',
@@ -108,7 +126,6 @@ const styles = {
     left: 0,
     right: 0,
     height: 2,
-    background: 'var(--amber)',
   },
   tabNum: {
     marginLeft: 'auto',
@@ -120,5 +137,8 @@ const styles = {
   tabNumActive: {
     opacity: 0.7,
     color: 'var(--amber)',
+  },
+  tabNumSelector: {
+    color: 'var(--cyan)',
   },
 }

@@ -50,6 +50,8 @@ async def mock_llm(prompt: str) -> str:
         return MOCK_ESTIMATION
     elif "qa automation" in p or "selenium" in p:
         return MOCK_AUTOMATION
+    elif "selector" in p or "html" in p:
+        return MOCK_SELECTORS
     return "Mock response."
 
 
@@ -151,6 +153,66 @@ Return ONLY raw Python code. No markdown fences, no explanation."""
     return await call_llm(prompt)
 
 
+async def analyze_selectors(html_content: str, page_name: str, openai_key: str = "") -> str:
+    if openai_key:
+        os.environ["OPENAI_API_KEY"] = openai_key
+
+    max_len = 12000
+    html_truncated = html_content[:max_len] + "\n... [truncated]" if len(html_content) > max_len else html_content
+
+    prompt = f"""You are a QA Automation Engineer specializing in Selenium WebDriver.
+
+Analyze the following HTML source code from the "{page_name}" page and extract ALL useful selectors for test automation.
+
+HTML:
+{html_truncated}
+
+For each interactive or important element, provide the best selector.
+Prefer selectors in this order: ID > data-testid > name > CSS class > XPath.
+
+Format your response as a Python Page Object class like this:
+
+# ============================================================
+# PAGE OBJECT: {page_name}
+# ============================================================
+
+from selenium.webdriver.common.by import By
+
+class {page_name.replace(' ', '')}Page:
+
+    # --- Form Inputs ---
+    EMAIL_INPUT    = (By.ID, "email")           # Email input field
+    PASSWORD_INPUT = (By.ID, "password")        # Password input field
+
+    # --- Buttons ---
+    LOGIN_BUTTON   = (By.ID, "login-btn")       # Submit / Login button
+
+    # --- Messages ---
+    ERROR_MSG      = (By.CSS_SELECTOR, "[data-testid='error']")  # Error message
+
+# ============================================================
+# SELECTOR REFERENCE TABLE
+# ============================================================
+# Element              | Type              | Locator
+# ---------------------|-------------------|---------------------------
+# Email Input          | By.ID             | "email"
+# Password Input       | By.ID             | "password"
+# Login Button         | By.ID             | "login-btn"
+
+List ALL selectors you can find including:
+- All form inputs (text, email, password, select, checkbox, radio, textarea)
+- All buttons and submit elements
+- All links and navigation items
+- Error / success / warning messages
+- Modal dialogs and overlays
+- Tables and list elements
+- Any element with id, data-testid, name, or unique class
+
+Return ONLY the Python code. No explanation outside code comments."""
+
+    return await call_llm(prompt)
+
+
 # ── MAIN PIPELINE ─────────────────────────────────────────────────────────────
 
 async def run_pipeline(requirement: str, openai_key: str = "") -> dict:
@@ -178,11 +240,9 @@ MOCK_ANALYST = """| ID | Title | Preconditions | Steps | Expected Result | Prior
 | TC-001 | Successful login with valid credentials | Registered account exists | 1. Go to login page 2. Enter valid email 3. Enter correct password 4. Click Login | User redirected to dashboard | High |
 | TC-002 | Login fails with incorrect password | Registered account exists | 1. Enter valid email 2. Enter wrong password 3. Click Login | Error message shown | High |
 | TC-003 | Account locks after 5 failed attempts | Registered account exists | 1. Enter wrong password 5 times | Account locked message shown | High |
-| TC-004 | Remember Me persists session | Valid credentials | 1. Login with Remember Me checked 2. Close browser 3. Reopen app | User still logged in | High |
-| TC-005 | Login with empty email | App accessible | 1. Leave email blank 2. Enter password 3. Click Login | Validation error shown | High |
-| TC-006 | Login with empty password | App accessible | 1. Enter email 2. Leave password blank 3. Click Login | Validation error shown | High |
-| TC-007 | Login with invalid email format | App accessible | 1. Enter invalid email 2. Enter password 3. Click Login | Format validation error | Medium |
-| TC-008 | SQL injection in email field | App accessible | 1. Enter SQL injection string 2. Click Login | Login fails safely | High |"""
+| TC-004 | Remember Me persists session | Valid credentials | 1. Login with Remember Me 2. Close browser 3. Reopen | User still logged in | High |
+| TC-005 | Login with empty email | App accessible | 1. Leave email blank 2. Click Login | Validation error shown | High |
+| TC-006 | Login with empty password | App accessible | 1. Leave password blank 2. Click Login | Validation error shown | High |"""
 
 MOCK_LEAD = """| ID | Title | Preconditions | Steps | Expected Result | Priority |
 |----|-------|---------------|-------|-----------------|----------|
@@ -191,13 +251,11 @@ MOCK_LEAD = """| ID | Title | Preconditions | Steps | Expected Result | Priority
 | TC-003 | No lockout before 5th failed attempt | Registered account; 0 prior failures | 1. Enter wrong password 4 times | Account still accessible | High |
 | TC-004 | Account locks on 5th failed attempt | Registered account; 0 prior failures | 1. Enter wrong password 5 times | Account locked; lock message shown | High |
 | TC-005 | Locked account blocks correct password | Account is locked | 1. Enter correct credentials 2. Click Login | Login denied; lock message shown | High |
-| TC-006 | Remember Me sets persistent cookie | Valid credentials | 1. Login with Remember Me checked 2. Close browser 3. Reopen app | Persistent cookie set; user logged in | High |
-| TC-007 | Without Remember Me — session expires | Valid credentials | 1. Login without Remember Me 2. Close browser 3. Reopen app | User redirected to login | Medium |
+| TC-006 | Remember Me sets persistent cookie | Valid credentials | 1. Login with Remember Me 2. Close browser 3. Reopen | Persistent cookie; user logged in | High |
+| TC-007 | Without Remember Me session expires | Valid credentials | 1. Login without Remember Me 2. Close browser 3. Reopen | User redirected to login | Medium |
 | TC-008 | Empty email shows validation error | App accessible | 1. Leave email blank 2. Click Login | Inline error: Email is required | High |
 | TC-009 | Empty password shows validation error | App accessible | 1. Leave password blank 2. Click Login | Inline error: Password is required | High |
-| TC-010 | Invalid email format blocked | App accessible | 1. Enter malformed email 2. Click Login | Format validation error shown | Medium |
-| TC-011 | SQL injection in email field | App accessible | 1. Enter SQL payload 2. Click Login | Login fails; no SQL error exposed | High |
-| TC-012 | XSS payload in email field | App accessible | 1. Enter script tag in email 2. Click Login | Input sanitized; no script executes | High |"""
+| TC-010 | SQL injection in email field | App accessible | 1. Enter SQL payload 2. Click Login | Login fails; no SQL error exposed | High |"""
 
 MOCK_ESTIMATION = """### Estimation Summary
 - **Total Time (hours):** 28.5
@@ -294,3 +352,46 @@ def test_account_lockout(page):
         page.login(VALID_EMAIL, WRONG_PASS)
     lock = page.wait.until(EC.visibility_of_element_located(LoginPage.LOCK_MSG)).text
     assert "locked" in lock.lower()'''
+
+MOCK_SELECTORS = '''# ============================================================
+# PAGE OBJECT: Login Page (MOCK - Add OpenAI key for real analysis)
+# ============================================================
+
+from selenium.webdriver.common.by import By
+
+class LoginPage:
+
+    # --- Form Inputs ---
+    EMAIL_INPUT     = (By.ID, "email")               # Email input field
+    PASSWORD_INPUT  = (By.ID, "password")            # Password input field
+    REMEMBER_ME     = (By.ID, "remember-me")         # Remember me checkbox
+
+    # --- Buttons ---
+    LOGIN_BUTTON    = (By.ID, "login-btn")           # Submit / Login button
+    FORGOT_PASSWORD = (By.CSS_SELECTOR, "a.forgot")  # Forgot password link
+
+    # --- Messages ---
+    ERROR_MSG       = (By.CSS_SELECTOR, "[data-testid=\'error-message\']")
+    SUCCESS_MSG     = (By.CSS_SELECTOR, "[data-testid=\'success-message\']")
+    LOCK_MSG        = (By.CSS_SELECTOR, "[data-testid=\'lock-message\']")
+
+    # --- Navigation ---
+    REGISTER_LINK   = (By.CSS_SELECTOR, "a[href=\'/register\']")
+    LOGO            = (By.CSS_SELECTOR, ".logo")
+
+    # --- Post Login ---
+    DASHBOARD       = (By.CSS_SELECTOR, "[data-testid=\'dashboard-header\']")
+
+# ============================================================
+# SELECTOR REFERENCE TABLE
+# ============================================================
+# Element              | Type              | Locator
+# ---------------------|-------------------|---------------------------
+# Email Input          | By.ID             | "email"
+# Password Input       | By.ID             | "password"
+# Remember Me          | By.ID             | "remember-me"
+# Login Button         | By.ID             | "login-btn"
+# Error Message        | By.CSS_SELECTOR   | "[data-testid=\'error-message\']"
+# Lock Message         | By.CSS_SELECTOR   | "[data-testid=\'lock-message\']"
+# Dashboard Header     | By.CSS_SELECTOR   | "[data-testid=\'dashboard-header\']"
+'''

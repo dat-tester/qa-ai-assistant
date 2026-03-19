@@ -1,17 +1,15 @@
 import { useState } from 'react'
+import SelectorAnalyzer from './SelectorAnalyzer'
 
 // ── Markdown Table Parser ──────────────────────────────────────────────────────
 function parseMarkdownTable(md) {
   if (!md) return null
   const lines = md.split('\n').filter(l => l.trim().startsWith('|'))
   if (lines.length < 2) return null
-
   const parseRow = line =>
     line.split('|').slice(1, -1).map(cell => cell.trim())
-
   const headers = parseRow(lines[0])
   const rows = lines.slice(2).map(parseRow).filter(r => r.length === headers.length)
-
   return { headers, rows }
 }
 
@@ -41,21 +39,16 @@ function PriorityBadge({ value }) {
 // ── Table View ─────────────────────────────────────────────────────────────────
 function TableView({ content }) {
   const table = parseMarkdownTable(content)
-
   if (!table) {
     return <pre style={{ color: 'var(--text)', fontSize: '0.82rem', lineHeight: 1.7 }}>{content}</pre>
   }
-
   const { headers, rows } = table
   const priorityCol = headers.findIndex(h => h.toLowerCase() === 'priority')
-
   return (
     <div className="md-table-wrap">
       <table>
         <thead>
-          <tr>
-            {headers.map((h, i) => <th key={i}>{h}</th>)}
-          </tr>
+          <tr>{headers.map((h, i) => <th key={i}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row, ri) => (
@@ -79,11 +72,8 @@ function TableView({ content }) {
 // ── Estimation View ────────────────────────────────────────────────────────────
 function EstimationView({ content }) {
   if (!content) return null
-
-  // Parse and render markdown manually for clean display
   const lines = content.split('\n')
   const elements = []
-  let inList = false
   let inTable = false
   let tableLines = []
 
@@ -114,7 +104,6 @@ function EstimationView({ content }) {
 
   lines.forEach((line, i) => {
     if (line.trim().startsWith('|')) {
-      if (inList) { inList = false }
       inTable = true
       tableLines.push(line)
       return
@@ -122,9 +111,7 @@ function EstimationView({ content }) {
       flushTable(`table-${i}`)
       inTable = false
     }
-
     if (line.startsWith('### ')) {
-      if (inList) inList = false
       elements.push(<h3 key={i}>{line.replace('### ', '')}</h3>)
     } else if (line.startsWith('- ')) {
       const text = line.replace('- ', '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -138,9 +125,7 @@ function EstimationView({ content }) {
       elements.push(<p key={i} dangerouslySetInnerHTML={{ __html: text }} />)
     }
   })
-
   if (inTable) flushTable('table-end')
-
   return (
     <div className="estimation-content" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {elements}
@@ -150,26 +135,22 @@ function EstimationView({ content }) {
 
 // ── Code View ──────────────────────────────────────────────────────────────────
 function CodeView({ content }) {
-  // Strip markdown fences if present
   const code = content
     .replace(/^```[\w]*\n?/, '')
     .replace(/```$/, '')
     .trim()
-
   return <pre className="code-block">{code}</pre>
 }
 
 // ── Copy Button ────────────────────────────────────────────────────────────────
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false)
-
   const handleCopy = () => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
   }
-
   return (
     <button
       style={{
@@ -177,7 +158,6 @@ function CopyButton({ text }) {
         ...(copied ? styles.copyBtnSuccess : {}),
       }}
       onClick={handleCopy}
-      title="Copy to clipboard"
     >
       {copied ? '✓ COPIED' : '⎘ COPY'}
     </button>
@@ -186,6 +166,11 @@ function CopyButton({ text }) {
 
 // ── Result Viewer ──────────────────────────────────────────────────────────────
 export default function ResultViewer({ activeTab, data }) {
+  // Selector tab — always available
+  if (activeTab === 'selector') {
+    return <SelectorAnalyzer />
+  }
+
   if (!data) return null
 
   const tabConfig = {
@@ -220,7 +205,6 @@ export default function ResultViewer({ activeTab, data }) {
 
   return (
     <div style={styles.wrap}>
-      {/* Header */}
       <div style={styles.header}>
         <div>
           <h2 style={styles.title}>{tab.title}</h2>
@@ -228,14 +212,8 @@ export default function ResultViewer({ activeTab, data }) {
         </div>
         <CopyButton text={tab.content} />
       </div>
-
-      {/* Divider */}
       <div style={styles.divider} />
-
-      {/* Content */}
-      <div style={styles.content}>
-        {tab.render}
-      </div>
+      <div style={styles.content}>{tab.render}</div>
     </div>
   )
 }
