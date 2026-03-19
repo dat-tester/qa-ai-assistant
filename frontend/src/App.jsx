@@ -59,10 +59,8 @@ export default function App() {
 
   return (
     <div style={styles.root}>
-      {/* Scanline effect */}
       <div style={styles.scanline} />
 
-      {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.logo}>
@@ -73,7 +71,6 @@ export default function App() {
             </div>
           </div>
           <div style={styles.headerRight}>
-            {/* API Key status badge */}
             <div style={{
               ...styles.keyBadge,
               ...(hasApiKey ? styles.keyBadgeActive : {})
@@ -84,16 +81,12 @@ export default function App() {
               }} />
               {hasApiKey ? 'GPT-4o ACTIVE' : 'MOCK MODE'}
             </div>
-
-            {/* Settings button */}
             <button
               style={styles.settingsBtn}
               onClick={() => setShowSettings(true)}
             >
               ⚙ SETTINGS
             </button>
-
-            {/* Online status */}
             <div style={styles.headerMeta}>
               <span style={styles.statusDot} />
               <span style={styles.statusText}>SYSTEM ONLINE</span>
@@ -102,11 +95,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── Main ── */}
       <main style={styles.main}>
         <div style={styles.container}>
-
-          {/* Left column */}
           <div style={styles.leftCol}>
             <div style={styles.card}>
               <div style={styles.cardHeader}>
@@ -115,8 +105,6 @@ export default function App() {
               </div>
               <RequirementInput onSubmit={handleGenerate} loading={loading} />
             </div>
-
-            {/* Info panel */}
             <div style={styles.infoPanel}>
               <div style={styles.infoPanelTitle}>PIPELINE STAGES</div>
               {[
@@ -136,11 +124,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right column */}
           <div style={styles.rightCol}>
             <div style={styles.card}>
-
-              {/* Error */}
               {error && (
                 <div style={styles.errorBanner}>
                   <span style={styles.errorIcon}>⚠</span>
@@ -150,11 +135,7 @@ export default function App() {
                   </div>
                 </div>
               )}
-
-              {/* Loading */}
               {loading && <LoadingState currentStep={currentStep} />}
-
-              {/* Results */}
               {!loading && data && (
                 <div style={styles.resultWrap}>
                   <div style={styles.cardHeader}>
@@ -167,35 +148,27 @@ export default function App() {
                   </div>
                 </div>
               )}
-
-              {/* Empty state */}
               {!loading && !data && !error && (
                 <div style={styles.emptyState}>
                   <div style={styles.emptyGrid} />
                   <div style={styles.emptyInner}>
                     <span style={styles.emptyIcon}>◈</span>
                     <p style={styles.emptyText}>Results will appear here</p>
-                    <p style={styles.emptySubtext}>
-                      Paste a requirement and click Generate
-                    </p>
+                    <p style={styles.emptySubtext}>Paste a requirement and click Generate</p>
                   </div>
                 </div>
               )}
-
             </div>
           </div>
-
         </div>
       </main>
 
-      {/* ── Footer ── */}
       <footer style={styles.footer}>
         <span>QA AI ASSISTANT · FastAPI + React</span>
         <span style={{ color: 'var(--border2)' }}>·</span>
         <span>{hasApiKey ? 'OpenAI GPT-4o' : 'Mock Mode — Add API key in Settings'}</span>
       </footer>
 
-      {/* ── Settings Modal ── */}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   )
@@ -294,4 +267,206 @@ const styles = {
     color: 'var(--text-dim)',
     fontFamily: 'var(--mono)',
     fontSize: '0.65rem',
-    letterSpacing: '0
+    letterSpacing: '0.08em',
+    padding: '6px 12px',
+    borderRadius: 'var(--radius)',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  headerMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    background: 'var(--green)',
+    display: 'inline-block',
+    animation: 'pulse 2s ease-in-out infinite',
+  },
+  statusText: {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.65rem',
+    letterSpacing: '0.1em',
+    color: 'var(--green)',
+  },
+  main: {
+    flex: 1,
+    padding: '28px 24px',
+  },
+  container: {
+    maxWidth: 1400,
+    margin: '0 auto',
+    display: 'grid',
+    gridTemplateColumns: '360px 1fr',
+    gap: 20,
+    alignItems: 'start',
+  },
+  leftCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+    position: 'sticky',
+    top: 88,
+  },
+  rightCol: {
+    minHeight: 500,
+  },
+  card: {
+    background: 'var(--bg2)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: '24px',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    marginBottom: 20,
+  },
+  cardTag: {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.62rem',
+    letterSpacing: '0.14em',
+    color: 'var(--amber)',
+    display: 'block',
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontFamily: 'var(--sans)',
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    color: 'var(--text-head)',
+  },
+  infoPanel: {
+    background: 'var(--bg2)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: '18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  infoPanelTitle: {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.62rem',
+    letterSpacing: '0.12em',
+    color: 'var(--text-dim)',
+    marginBottom: 4,
+  },
+  infoRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  infoIcon: {
+    color: 'var(--amber)',
+    fontSize: '0.8rem',
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  infoName: {
+    fontFamily: 'var(--sans)',
+    fontWeight: 600,
+    fontSize: '0.78rem',
+    color: 'var(--text-head)',
+  },
+  infoDesc: {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.68rem',
+    color: 'var(--text-dim)',
+    marginTop: 1,
+  },
+  errorBanner: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 14,
+    padding: '16px 18px',
+    background: 'rgba(255,77,106,0.08)',
+    border: '1px solid rgba(255,77,106,0.3)',
+    borderRadius: 'var(--radius)',
+    marginBottom: 20,
+  },
+  errorIcon: {
+    color: 'var(--red)',
+    fontSize: '1.2rem',
+    flexShrink: 0,
+  },
+  errorTitle: {
+    fontFamily: 'var(--sans)',
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    color: 'var(--red)',
+    marginBottom: 4,
+  },
+  errorMsg: {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.75rem',
+    color: 'var(--text)',
+    lineHeight: 1.6,
+  },
+  resultWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20,
+  },
+  tabContent: {
+    paddingTop: 4,
+  },
+  emptyState: {
+    position: 'relative',
+    minHeight: 360,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderRadius: 'var(--radius)',
+  },
+  emptyGrid: {
+    position: 'absolute',
+    inset: 0,
+    backgroundImage: `
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px)
+    `,
+    backgroundSize: '48px 48px',
+    opacity: 0.4,
+  },
+  emptyInner: {
+    position: 'relative',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyIcon: {
+    fontSize: '2.5rem',
+    color: 'var(--border2)',
+    animation: 'pulse 3s ease-in-out infinite',
+  },
+  emptyText: {
+    fontFamily: 'var(--sans)',
+    fontWeight: 700,
+    fontSize: '1rem',
+    color: 'var(--text-dim)',
+  },
+  emptySubtext: {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.72rem',
+    color: 'var(--text-dim)',
+    opacity: 0.6,
+  },
+  footer: {
+    borderTop: '1px solid var(--border)',
+    padding: '14px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    fontFamily: 'var(--mono)',
+    fontSize: '0.65rem',
+    color: 'var(--text-dim)',
+    letterSpacing: '0.06em',
+  },
+}
