@@ -1,26 +1,31 @@
 const TABS = [
-  { id: 'analyst',    label: 'Test Cases',       icon: '◈', sub: 'QA Analyst' },
-  { id: 'lead',       label: 'Final Test Cases',  icon: '◉', sub: 'QA Lead' },
-  { id: 'estimation', label: 'Estimation',        icon: '◆', sub: 'QA Estimator' },
-  { id: 'automation', label: 'Automation Code',   icon: '◀', sub: 'QA Engineer' },
-  { id: 'selector',   label: 'Selector Analyzer', icon: '⚡', sub: 'QA Selector' },
+  { id: 'analyst',    label: 'Test Cases',        icon: '◈', sub: 'QA Analyst' },
+  { id: 'lead',       label: 'Final Test Cases',   icon: '◉', sub: 'QA Lead' },
+  { id: 'estimation', label: 'Estimation',         icon: '◆', sub: 'QA Estimator' },
+  { id: 'automation', label: 'Selenium Code',      icon: '◀', sub: 'QA Engineer' },
+  { id: 'playwright', label: 'Playwright Code',    icon: '▶', sub: 'QA Playwright' },
+  { id: 'selector',   label: 'Selector Analyzer',  icon: '⚡', sub: 'QA Selector' },
 ]
 
 export default function Tabs({ active, onChange, hasData }) {
   return (
     <div style={styles.wrap}>
       {TABS.map((tab, i) => {
-        const isActive = active === tab.id
+        const isActive   = active === tab.id
         const isSelector = tab.id === 'selector'
-        const disabled = !hasData && !isSelector
+        const isPlay     = tab.id === 'playwright'
+        const disabled   = !hasData && !isSelector
+
+        let accentColor = 'var(--amber)'
+        if (isSelector) accentColor = 'var(--cyan)'
+        if (isPlay)     accentColor = '#a78bfa'
 
         return (
           <button
             key={tab.id}
             style={{
               ...styles.tab,
-              ...(isActive ? styles.tabActive : {}),
-              ...(isActive && isSelector ? styles.tabActiveSelector : {}),
+              ...(isActive ? { ...styles.tabActive, borderBottomColor: accentColor, background: `${accentColor}0a` } : {}),
               ...(disabled ? styles.tabDisabled : {}),
             }}
             onClick={() => !disabled && onChange(tab.id)}
@@ -28,7 +33,7 @@ export default function Tabs({ active, onChange, hasData }) {
           >
             <span style={{
               ...styles.tabIcon,
-              ...(isActive ? (isSelector ? styles.tabIconSelector : styles.tabIconActive) : {}),
+              ...(isActive ? { color: accentColor } : {}),
             }}>
               {tab.icon}
             </span>
@@ -36,16 +41,10 @@ export default function Tabs({ active, onChange, hasData }) {
               <span style={styles.tabLabel}>{tab.label}</span>
               <span style={styles.tabSub}>{tab.sub}</span>
             </span>
-            {isActive && (
-              <span style={{
-                ...styles.activeBar,
-                background: isSelector ? 'var(--cyan)' : 'var(--amber)',
-              }} />
-            )}
+            {isActive && <span style={{ ...styles.activeBar, background: accentColor }} />}
             <span style={{
               ...styles.tabNum,
-              ...(isActive ? styles.tabNumActive : {}),
-              ...(isActive && isSelector ? styles.tabNumSelector : {}),
+              ...(isActive ? { opacity: 0.7, color: accentColor } : {}),
             }}>
               0{i + 1}
             </span>
@@ -82,12 +81,6 @@ const styles = {
   },
   tabActive: {
     color: 'var(--text-head)',
-    borderBottomColor: 'var(--amber)',
-    background: 'rgba(245,166,35,0.04)',
-  },
-  tabActiveSelector: {
-    borderBottomColor: 'var(--cyan)',
-    background: 'rgba(61,214,245,0.04)',
   },
   tabDisabled: {
     opacity: 0.35,
@@ -97,12 +90,6 @@ const styles = {
     fontSize: '0.9rem',
     color: 'var(--text-dim)',
     transition: 'color 0.15s',
-  },
-  tabIconActive: {
-    color: 'var(--amber)',
-  },
-  tabIconSelector: {
-    color: 'var(--cyan)',
   },
   tabInner: {
     display: 'flex',
@@ -133,12 +120,5 @@ const styles = {
     fontSize: '0.6rem',
     opacity: 0.3,
     letterSpacing: '0.05em',
-  },
-  tabNumActive: {
-    opacity: 0.7,
-    color: 'var(--amber)',
-  },
-  tabNumSelector: {
-    color: 'var(--cyan)',
   },
 }

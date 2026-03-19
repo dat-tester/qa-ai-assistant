@@ -134,12 +134,16 @@ function EstimationView({ content }) {
 }
 
 // ── Code View ──────────────────────────────────────────────────────────────────
-function CodeView({ content }) {
+function CodeView({ content, color }) {
   const code = content
     .replace(/^```[\w]*\n?/, '')
     .replace(/```$/, '')
     .trim()
-  return <pre className="code-block">{code}</pre>
+  return (
+    <pre className="code-block" style={color ? { color } : {}}>
+      {code}
+    </pre>
+  )
 }
 
 // ── Copy Button ────────────────────────────────────────────────────────────────
@@ -153,10 +157,7 @@ function CopyButton({ text }) {
   }
   return (
     <button
-      style={{
-        ...styles.copyBtn,
-        ...(copied ? styles.copyBtnSuccess : {}),
-      }}
+      style={{ ...styles.copyBtn, ...(copied ? styles.copyBtnSuccess : {}) }}
       onClick={handleCopy}
     >
       {copied ? '✓ COPIED' : '⎘ COPY'}
@@ -166,7 +167,6 @@ function CopyButton({ text }) {
 
 // ── Result Viewer ──────────────────────────────────────────────────────────────
 export default function ResultViewer({ activeTab, data }) {
-  // Selector tab — always available
   if (activeTab === 'selector') {
     return <SelectorAnalyzer />
   }
@@ -177,26 +177,37 @@ export default function ResultViewer({ activeTab, data }) {
     analyst: {
       title: 'QA Analyst Output',
       subtitle: 'Raw test cases generated from the requirement',
+      accent: 'var(--amber)',
       render: <TableView content={data.analyst} />,
       content: data.analyst,
     },
     lead: {
       title: 'QA Lead — Final Test Cases',
       subtitle: 'Reviewed, deduplicated, and improved test suite',
+      accent: 'var(--amber)',
       render: <TableView content={data.lead} />,
       content: data.lead,
     },
     estimation: {
       title: 'QA Estimator — Effort Report',
       subtitle: 'Complexity, time breakdown, risks and assumptions',
+      accent: 'var(--amber)',
       render: <EstimationView content={data.estimation} />,
       content: data.estimation,
     },
     automation: {
-      title: 'QA Automation Engineer',
+      title: 'QA Automation Engineer — Selenium',
       subtitle: 'Python · Pytest · Selenium · Page Object Model',
+      accent: 'var(--amber)',
       render: <CodeView content={data.automation} />,
       content: data.automation,
+    },
+    playwright: {
+      title: 'QA Playwright Engineer',
+      subtitle: 'Python · Pytest · Playwright · Page Object Model',
+      accent: '#a78bfa',
+      render: <CodeView content={data.playwright} color="#c4b5fd" />,
+      content: data.playwright,
     },
   }
 
@@ -212,7 +223,7 @@ export default function ResultViewer({ activeTab, data }) {
         </div>
         <CopyButton text={tab.content} />
       </div>
-      <div style={styles.divider} />
+      <div style={{ ...styles.divider, background: `linear-gradient(90deg, ${tab.accent}80, transparent)` }} />
       <div style={styles.content}>{tab.render}</div>
     </div>
   )
@@ -266,7 +277,6 @@ const styles = {
   },
   divider: {
     height: 1,
-    background: 'linear-gradient(90deg, var(--amber-dim), transparent)',
   },
   content: {
     minHeight: 200,
