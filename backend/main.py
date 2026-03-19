@@ -3,12 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from services.qa_pipeline import run_pipeline
 
-app = FastAPI(title="QA AI Assistant API", version="1.0.0")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -16,15 +15,9 @@ app.add_middleware(
 class RequirementRequest(BaseModel):
     requirement: str
 
-class PipelineResponse(BaseModel):
-    analyst: str
-    lead: str
-    estimation: str
-    automation: str
-
 @app.get("/")
 def health():
-    return {"status": "ok", "message": "QA AI Assistant API is running"}
+    return {"status": "ok"}
 
 @app.post("/generate")
 async def generate(req: RequirementRequest):
