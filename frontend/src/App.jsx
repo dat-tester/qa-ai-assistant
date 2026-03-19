@@ -3,9 +3,9 @@ import RequirementInput from './components/RequirementInput'
 import Tabs from './components/Tabs'
 import ResultViewer from './components/ResultViewer'
 import LoadingState from './components/LoadingState'
+import Settings from './components/Settings'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
 const PIPELINE_STEPS = ['analyst', 'lead', 'estimation', 'automation']
 
 export default function App() {
@@ -14,6 +14,7 @@ export default function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('analyst')
+  const [showSettings, setShowSettings] = useState(false)
 
   const handleGenerate = async (requirement) => {
     setLoading(true)
@@ -21,7 +22,6 @@ export default function App() {
     setData(null)
     setCurrentStep('analyst')
 
-    // Animate through steps while waiting
     let stepIdx = 0
     const stepTimer = setInterval(() => {
       stepIdx = Math.min(stepIdx + 1, PIPELINE_STEPS.length - 1)
@@ -29,10 +29,11 @@ export default function App() {
     }, 2200)
 
     try {
+      const openaiKey = localStorage.getItem('openai_api_key') || ''
       const res = await fetch(`${API_URL}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requirement }),
+        body: JSON.stringify({ requirement, openai_key: openaiKey }),
       })
 
       if (!res.ok) {
@@ -54,6 +55,8 @@ export default function App() {
     }
   }
 
+  const hasApiKey = !!localStorage.getItem('openai_api_key')
+
   return (
     <div style={styles.root}>
       {/* Scanline effect */}
@@ -66,12 +69,35 @@ export default function App() {
             <span style={styles.logoIcon}>◈</span>
             <div>
               <div style={styles.logoTitle}>QA AI ASSISTANT</div>
-              <div style={styles.logoSub}>Powered by Claude · v1.0.0</div>
+              <div style={styles.logoSub}>Powered by AI · v1.0.0</div>
             </div>
           </div>
-          <div style={styles.headerMeta}>
-            <span style={styles.statusDot} />
-            <span style={styles.statusText}>SYSTEM ONLINE</span>
+          <div style={styles.headerRight}>
+            {/* API Key status badge */}
+            <div style={{
+              ...styles.keyBadge,
+              ...(hasApiKey ? styles.keyBadgeActive : {})
+            }}>
+              <span style={{
+                ...styles.keyBadgeDot,
+                background: hasApiKey ? 'var(--green)' : 'var(--text-dim)'
+              }} />
+              {hasApiKey ? 'GPT-4o ACTIVE' : 'MOCK MODE'}
+            </div>
+
+            {/* Settings button */}
+            <button
+              style={styles.settingsBtn}
+              onClick={() => setShowSettings(true)}
+            >
+              ⚙ SETTINGS
+            </button>
+
+            {/* Online status */}
+            <div style={styles.headerMeta}>
+              <span style={styles.statusDot} />
+              <span style={styles.statusText}>SYSTEM ONLINE</span>
+            </div>
           </div>
         </div>
       </header>
@@ -80,7 +106,7 @@ export default function App() {
       <main style={styles.main}>
         <div style={styles.container}>
 
-          {/* Left column: input */}
+          {/* Left column */}
           <div style={styles.leftCol}>
             <div style={styles.card}>
               <div style={styles.cardHeader}>
@@ -110,7 +136,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right column: output */}
+          {/* Right column */}
           <div style={styles.rightCol}>
             <div style={styles.card}>
 
@@ -135,11 +161,7 @@ export default function App() {
                     <span style={styles.cardTag}>OUTPUT</span>
                     <h2 style={styles.cardTitle}>QA Pipeline Results</h2>
                   </div>
-                  <Tabs
-                    active={activeTab}
-                    onChange={setActiveTab}
-                    hasData={!!data}
-                  />
+                  <Tabs active={activeTab} onChange={setActiveTab} hasData={!!data} />
                   <div style={styles.tabContent}>
                     <ResultViewer activeTab={activeTab} data={data} />
                   </div>
@@ -168,15 +190,17 @@ export default function App() {
 
       {/* ── Footer ── */}
       <footer style={styles.footer}>
-        <span>QA AI ASSISTANT · Built with FastAPI + React · Claude AI</span>
+        <span>QA AI ASSISTANT · FastAPI + React</span>
         <span style={{ color: 'var(--border2)' }}>·</span>
-        <span>Automated QA Pipeline</span>
+        <span>{hasApiKey ? 'OpenAI GPT-4o' : 'Mock Mode — Add API key in Settings'}</span>
       </footer>
+
+      {/* ── Settings Modal ── */}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   )
 }
 
-/* ── Styles ─────────────────────────────────────────────────────────────────── */
 const styles = {
   root: {
     minHeight: '100vh',
@@ -235,201 +259,39 @@ const styles = {
     letterSpacing: '0.06em',
     marginTop: 1,
   },
-  headerMeta: {
+  headerRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
-  statusDot: {
-    width: 7,
-    height: 7,
+  keyBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 10px',
+    borderRadius: 4,
+    border: '1px solid var(--border)',
+    fontFamily: 'var(--mono)',
+    fontSize: '0.62rem',
+    letterSpacing: '0.08em',
+    color: 'var(--text-dim)',
+  },
+  keyBadgeActive: {
+    border: '1px solid rgba(61,255,160,0.3)',
+    color: 'var(--green)',
+    background: 'rgba(61,255,160,0.06)',
+  },
+  keyBadgeDot: {
+    width: 6,
+    height: 6,
     borderRadius: '50%',
-    background: 'var(--green)',
     display: 'inline-block',
     animation: 'pulse 2s ease-in-out infinite',
   },
-  statusText: {
+  settingsBtn: {
+    background: 'none',
+    border: '1px solid var(--border)',
+    color: 'var(--text-dim)',
     fontFamily: 'var(--mono)',
     fontSize: '0.65rem',
-    letterSpacing: '0.1em',
-    color: 'var(--green)',
-  },
-  main: {
-    flex: 1,
-    padding: '28px 24px',
-  },
-  container: {
-    maxWidth: 1400,
-    margin: '0 auto',
-    display: 'grid',
-    gridTemplateColumns: '360px 1fr',
-    gap: 20,
-    alignItems: 'start',
-  },
-  leftCol: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    position: 'sticky',
-    top: 88,
-  },
-  rightCol: {
-    minHeight: 500,
-  },
-  card: {
-    background: 'var(--bg2)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: '24px',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    marginBottom: 20,
-  },
-  cardTag: {
-    fontFamily: 'var(--mono)',
-    fontSize: '0.62rem',
-    letterSpacing: '0.14em',
-    color: 'var(--amber)',
-    display: 'block',
-    marginBottom: 4,
-  },
-  cardTitle: {
-    fontFamily: 'var(--sans)',
-    fontSize: '1.1rem',
-    fontWeight: 700,
-    color: 'var(--text-head)',
-  },
-  infoPanel: {
-    background: 'var(--bg2)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: '18px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-  infoPanelTitle: {
-    fontFamily: 'var(--mono)',
-    fontSize: '0.62rem',
-    letterSpacing: '0.12em',
-    color: 'var(--text-dim)',
-    marginBottom: 4,
-  },
-  infoRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  infoIcon: {
-    color: 'var(--amber)',
-    fontSize: '0.8rem',
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  infoName: {
-    fontFamily: 'var(--sans)',
-    fontWeight: 600,
-    fontSize: '0.78rem',
-    color: 'var(--text-head)',
-  },
-  infoDesc: {
-    fontFamily: 'var(--mono)',
-    fontSize: '0.68rem',
-    color: 'var(--text-dim)',
-    marginTop: 1,
-  },
-  errorBanner: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 14,
-    padding: '16px 18px',
-    background: 'rgba(255,77,106,0.08)',
-    border: '1px solid rgba(255,77,106,0.3)',
-    borderRadius: 'var(--radius)',
-    marginBottom: 20,
-  },
-  errorIcon: {
-    color: 'var(--red)',
-    fontSize: '1.2rem',
-    flexShrink: 0,
-    marginTop: 1,
-  },
-  errorTitle: {
-    fontFamily: 'var(--sans)',
-    fontWeight: 700,
-    fontSize: '0.85rem',
-    color: 'var(--red)',
-    marginBottom: 4,
-  },
-  errorMsg: {
-    fontFamily: 'var(--mono)',
-    fontSize: '0.75rem',
-    color: 'var(--text)',
-    lineHeight: 1.6,
-  },
-  resultWrap: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-  },
-  tabContent: {
-    paddingTop: 4,
-  },
-  emptyState: {
-    position: 'relative',
-    minHeight: 360,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderRadius: 'var(--radius)',
-  },
-  emptyGrid: {
-    position: 'absolute',
-    inset: 0,
-    backgroundImage: `
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px)
-    `,
-    backgroundSize: '48px 48px',
-    opacity: 0.4,
-  },
-  emptyInner: {
-    position: 'relative',
-    textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 12,
-  },
-  emptyIcon: {
-    fontSize: '2.5rem',
-    color: 'var(--border2)',
-    animation: 'pulse 3s ease-in-out infinite',
-  },
-  emptyText: {
-    fontFamily: 'var(--sans)',
-    fontWeight: 700,
-    fontSize: '1rem',
-    color: 'var(--text-dim)',
-  },
-  emptySubtext: {
-    fontFamily: 'var(--mono)',
-    fontSize: '0.72rem',
-    color: 'var(--text-dim)',
-    opacity: 0.6,
-  },
-  footer: {
-    borderTop: '1px solid var(--border)',
-    padding: '14px 24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    fontFamily: 'var(--mono)',
-    fontSize: '0.65rem',
-    color: 'var(--text-dim)',
-    letterSpacing: '0.06em',
-  },
-}
+    letterSpacing: '0
