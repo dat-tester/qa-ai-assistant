@@ -13,10 +13,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 class RequirementRequest(BaseModel):
     requirement: str
-
 
 class PipelineResponse(BaseModel):
     analyst: str
@@ -24,13 +22,11 @@ class PipelineResponse(BaseModel):
     estimation: str
     automation: str
 
-
 @app.get("/")
 def health():
     return {"status": "ok", "message": "QA AI Assistant API is running"}
 
-
-@app.post("/generate", response_model=PipelineResponse)
+@app.post("/generate")
 async def generate(req: RequirementRequest):
     if not req.requirement.strip():
         raise HTTPException(status_code=400, detail="Requirement cannot be empty.")
